@@ -1,2 +1,2 @@
-# evf-coaches
-EVF Wordpress plugin for managing coaches
+# evf-contacts
+EVF Wordpress plugin for managing contacts of the EVF
