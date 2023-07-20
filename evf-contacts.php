@@ -11,7 +11,7 @@
  * Plugin Name:         evf-contacts
  * Plugin URI:          https://github.com/muisit/evf-contacts
  * Description:         EVF specific plugin for a contacts-post-type
- * Version:             1.0.0
+ * Version:             1.0.1
  * Requires at least:   5.4
  * Requires PHP:        7.2
  * Author:              Michiel Uitdehaag

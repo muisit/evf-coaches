@@ -1,0 +1,126 @@
+#!/bin/bash
+
+source  .env
+
+RELEASE="1"
+MAJOR="0"
+MINOR="0"
+DRY="0"
+NOGIT="0"
+
+while [ $# -gt 0 ]
+do
+    arg=$1
+    shift
+    
+    if [[ "x$arg" = "x-v" ]]
+    then
+        RELEASE="1"
+        MINOR="1"
+    fi
+
+    if [[ "x$arg" = "x-r" ]]
+    then
+        RELEASE="1"        
+        MAJOR="1"
+    fi
+
+    if [[ "x$arg" = "x-n" ]]
+    then    
+        DRY="1"
+    fi
+
+    if [[ "x$arg" = "x-h" ]]
+    then
+        echo "Deploy to Wordpress script"
+        echo "Copyright (C) 2020 muis IT https://www.muisit.nl"
+        echo ""
+        echo "deploy_to_wordpress [options]"
+        echo ""
+        echo "-h           print this help text"
+        echo "-n           perform a dry-run, printing the raw commands"
+        echo "-r           release a major release (tag with major value upgraded)"
+        echo "-v           release a minor release (tag with minor value upgraded)"
+        echo ""
+        echo "Add the WPDIR directory location of the destination deployment dir"
+        echo ".env file next to this script. Set the PROJECT variable to the name of"
+        echo "the project/plugin name/file containing the version number."
+        exit
+    fi
+done
+
+if [[ "x$MAJOR" = "x1" && "x$MINOR" = "x1" ]]
+then
+    echo "Major release requires a minor version of 0, ignoring -v"
+    MINOR="0"
+fi
+
+VERSION=`grep "* Version" "$PROJECT.php" | sed 's/[^0-9]*\([0-9\.]*\).*/\1/'`
+MAJ=`echo $VERSION | sed 's/\([0-9]*\).*/\1/'`
+MIN=`echo $VERSION | sed 's/[0-9]*\.\([0-9]*\).*/\1/'`
+MICR=`echo $VERSION | sed 's/[0-9]*\.[0-9]*\.\([0-9]*\)/\1/'`
+
+if [[ "x1" == "x$MAJOR" ]]
+then
+    echo "Performing major release"
+    let "MAJ=$MAJ+1"
+    MIN="0"
+    MICR="0"
+else
+    if [[ "x1" = "x$MINOR" ]]
+    then
+        echo "Performing minor release"
+        let "MIN=$MIN+1"
+        MICR="0"
+    else
+        if [[ "x$RELEASE" = "x1" ]]
+        then
+            echo "Performing micro release"
+            let "MICR=$MICR+1"
+        fi
+    fi
+fi
+
+echo "Version ${MAJ}.${MIN}.${MICR}"
+
+if [[ "x$DRY" = "x1" ]]
+then
+    echo "cat \"$PROJECT.php\" | sed \"s/\(.*Version[ \t:]*\).*/\1${MAJ}.${MIN}.${MICR}/\" > tmp.$$"
+    echo "mv tmp.$$ \"$PROJECT.php\""
+else
+    cat "$PROJECT.php" | sed "s/\(.*Version[ \t:]*\).*/\1${MAJ}.${MIN}.${MICR}/" > tmp.$$
+    mv tmp.$$ "$PROJECT.php"
+    mg create tag "${MAJ}.${MIN}.${MICR}" -m "auto tagged commit"
+fi
+
+
+BASE=`pwd`
+DEPLOYDIR="$BASE/$WPDIR"
+if [[ "x$DRY" = "x1" ]]
+then
+    echo "rm -rf $DEPLOYDIR"
+    echo "mkdir -p $DEPLOYDIR"
+else
+    rm -rf $DEPLOYDIR
+    mkdir -p $DEPLOYDIR
+fi
+
+for i in *.php README.md templates
+do
+    if [[ "x$DRY" = "x1" ]]
+    then
+        echo "cp -v $i $DEPLOYDIR"
+    else
+        cp -darpv $i $DEPLOYDIR
+    fi
+done
+
+if [[ "x$DRY" = "x0" ]]
+then
+    cd /tmp
+    cp -darpv $DEPLOYDIR /tmp/$PROJECT
+    zip -r $PROJECT $PROJECT
+    mv $PROJECT.zip $DEPLOYDIR
+    rm -rf /tmp/$PROJECT
+fi
+
